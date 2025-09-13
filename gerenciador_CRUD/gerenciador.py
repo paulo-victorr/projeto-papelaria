@@ -1,6 +1,7 @@
 # gerenciador_CRUD/gerenciador.py
 from database.connection import get_connection
 from classes.produto import Produto
+from classes.cliente import Cliente
 
 # Classe para gerenciar os CRUD
 class GerenciadorProdutos:
@@ -95,20 +96,45 @@ class GerenciadorProdutos:
         finally:
             conn.close()
     
-    # Atualiza um produto existente
+    # Atualiza um produto
     def alterar(self, id, produto):
         conn = get_connection()
         if conn is None:
             return False
-        
+
         try:
             cursor = conn.cursor()
-            cursor.execute(
-                "UPDATE produto SET nome = %s, categoria = %s, preco = %s, quantidade_estoque = %s WHERE id = %s",
-                (produto.nome, produto.categoria, produto.preco, produto.quantidade_estoque, id)
+            sql = """
+                UPDATE produto
+                SET nome = %s, categoria = %s, preco = %s, quantidade_estoque = %s
+                WHERE id = %s
+            """
+
+            # suporte para vários formatos de 'produto'
+            if isinstance(produto, (tuple, list)) and len(produto) >= 4:
+                nome, categoria, preco, quantidade_estoque = produto[:4]
+            elif isinstance(produto, dict):
+                nome = produto.get("nome")
+                categoria = produto.get("categoria")
+                preco = produto.get("preco")
+                quantidade_estoque = produto.get("quantidade_estoque")
+            else:
+                # assume instância de Produto
+                nome = produto.nome
+                categoria = produto.categoria
+                preco = produto.preco
+                quantidade_estoque = produto.quantidade_estoque
+
+            valores = (
+                str(nome),
+                str(categoria),
+                float(preco),
+                int(quantidade_estoque),
+                int(id)
             )
+
+            cursor.execute(sql, valores)
             conn.commit()
-            # Verifica se alguma linha foi alterada
             return cursor.rowcount > 0
         except Exception as e:
             print("Erro ao alterar produto:", e)
@@ -162,5 +188,53 @@ class GerenciadorProdutos:
                     
         except Exception as e:
             return f"Erro ao gerar relatorio: {e}"
+        finally:
+            conn.close()
+            
+class GerenciadorClientes:
+    
+    # Insere um novo cliente no banco
+    def inserir(self, cliente):
+        conn = get_connection()
+        if conn is None:
+            return False
+        
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO cliente (nome, telefone, email, endereco) VALUES (%s, %s, %s, %s) RETURNING id",
+                (cliente.nome, cliente.telefone, cliente.email, cliente.endereco)
+            )
+            # Pega o ID gerado automaticamente
+            cliente.id = cursor.fetchone()[0]
+            conn.commit()
+            return True
+        except Exception as e:
+            print("Erro ao inserir Cliente:", e)
+            return False
+        finally:
+            conn.close()      
+    
+    # Retorna todos os produtos do banco
+    def listar_todos(self):
+        conn = get_connection()
+        if conn is None:
+            return []
+        
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM cliente ORDER BY nome")
+            resultados = cursor.fetchall()
+            
+            clientes = []
+            for linha in resultados:
+                # Cria objeto clientes para cada linha do banco
+                cliente = Cliente(linha[0], linha[1], linha[2], (linha[3]), linha[4])
+                clientes.append(cliente)
+            
+            return clientes
+        except Exception as e:
+            print("Erro ao listar Clientes:", e)
+            return []
         finally:
             conn.close()

@@ -215,7 +215,7 @@ class GerenciadorClientes:
         finally:
             conn.close()      
     
-    # Retorna todos os produtos do banco
+    # Retorna todos os clientes do banco
     def listar_todos(self):
         conn = get_connection()
         if conn is None:
@@ -236,5 +236,153 @@ class GerenciadorClientes:
         except Exception as e:
             print("Erro ao listar Clientes:", e)
             return []
+        finally:
+            conn.close()
+    
+    def pesquisar_por_nome(self, nome):
+        conn = get_connection()
+        if conn is None:
+            return []
+        
+        try:
+            cursor = conn.cursor()
+            # Busca clientes que contenham o nome pesquisado
+            cursor.execute("SELECT * FROM cliente WHERE nome ILIKE %s ORDER BY nome", (f'%{nome}%',))
+            resultados = cursor.fetchall()
+            
+            clientes = []
+            for linha in resultados:
+                cliente = Cliente(linha[0], linha[1], linha[2], (linha[3]), linha[4])
+                clientes.append(cliente)
+            
+            return clientes
+        except Exception as e:
+            print("Erro ao pesquisar clientes:", e)
+            return []
+        finally:
+            conn.close() 
+    
+    # Atualiza um cliente
+    def alterar(self, id, cliente):
+        conn = get_connection()
+        if conn is None:
+            return False
+
+        try:
+            cursor = conn.cursor()
+            sql = """
+                UPDATE cliente
+                SET nome = %s, telefone = %s, email = %s, endereco = %s
+                WHERE id = %s
+            """
+
+            # suporte para vários formatos de 'produto'
+            if isinstance(cliente, (tuple, list)) and len(cliente) >= 4:
+                nome, telefone, email, endereco = cliente[:4]
+            elif isinstance(cliente, dict):
+                nome = cliente.get("nome")
+                telefone = cliente.get("telefone")
+                email = cliente.get("email")
+                endereco = cliente.get("endereco")
+            else:
+                # assume instância de Produto
+                nome = cliente.nome
+                telefone = cliente.telefone
+                email = cliente.email
+                endereco = cliente.endereco
+
+            valores = (
+                str(nome),
+                str(telefone),
+                str(email),
+                str(endereco),
+                int(id)
+            )
+
+            cursor.execute(sql, valores)
+            conn.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            print("Erro ao alterar cliente:", e)
+            return False
+        finally:
+            conn.close()
+
+    def remover(self, id):
+        conn = get_connection()
+        if conn is None:
+            return False
+        
+        try:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM cliente WHERE id = %s", (id,))
+            conn.commit()
+            # Verifica se alguma linha foi removida
+            return cursor.rowcount > 0
+        except Exception as e:
+            print("Erro ao remover cliente:", e)
+            return False
+        finally:
+            conn.close()
+
+    # Gera relatório de clientes
+    def gerar_relatorio_clientes(self):
+        conn = get_connection()
+        if conn is None:
+            return "Erro de conexao"
+        
+        try:
+            cursor = conn.cursor()
+            
+            # Total de clientes
+            cursor.execute("SELECT COUNT(*) FROM cliente")
+            total = cursor.fetchone()[0]
+            
+            # Clientes sem telefone
+            cursor.execute("SELECT COUNT(*) FROM cliente WHERE telefone IS NULL OR telefone = ''")
+            sem_telefone = cursor.fetchone()[0]
+            
+            # Clientes sem email
+            cursor.execute("SELECT COUNT(*) FROM cliente WHERE email IS NULL OR email = ''")
+            sem_email = cursor.fetchone()[0]
+            
+            # Cidades mais comuns (se endereco tiver cidade, ajusta a query conforme seu formato)
+            cursor.execute("SELECT endereco, COUNT(*) FROM cliente GROUP BY endereco ORDER BY COUNT(*) DESC LIMIT 3")
+            top_enderecos = cursor.fetchall()
+            
+            # Monta string final
+            relatorio = (f"RELATÓRIO DE CLIENTES\n"
+                        f"Total de clientes: {total}\n"
+                        f"Sem telefone: {sem_telefone}\n"
+                        f"Sem email: {sem_email}\n"
+                        f"\nTop 3 endereços mais cadastrados:\n")
+            
+            for endereco, qtd in top_enderecos:
+                relatorio += f" - {endereco}: {qtd} clientes\n"
+            
+            return relatorio
+            
+        except Exception as e:
+            return f"Erro ao gerar relatório: {e}"
+        finally:
+            conn.close()
+    
+    # Busca um cliente pelo ID
+    def exibir_um(self, id):
+        conn = get_connection()
+        if conn is None:
+            return None
+        
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM cliente WHERE id = %s", (id,))
+            linha = cursor.fetchone()
+            
+            if linha:
+                return Cliente(linha[0], linha[1], linha[2], (linha[3]), linha[4])
+            return None
+        except Exception as e:
+            print("Erro ao buscar cliente:", e)
+            return None
         finally:
             conn.close()

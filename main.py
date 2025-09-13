@@ -139,9 +139,69 @@ def menu_clientes():
             for cliente in clientes:
                 print(cliente)
         
+        elif opcao == "3":
+            # Pesquisar por nome
+            nome = input("Digite o nome para pesquisar: ")
+            clientes = gerenciador_cliente.pesquisar_por_nome(nome)
+            print("\n--- RESULTADO DA PESQUISA ---")
+            for cliente in clientes:
+                print(cliente)
+
+        elif opcao == "4":
+            # Alterar Cliente
+            id_cliente = int(input("Digite o ID do cliente que deseja alterar: "))
+
+            print("Digite os novos dados do cliente:")
+            nome = input("Novo nome: ")
+            telefone = input("Novo telefone: ")
+            email = input("Novo email: ")
+            endereco = input("Novo endereco: ")
+
+            # Criação do objeto Cliente usando named args
+            novo_cliente = Cliente(
+                nome=nome,
+                telefone=telefone,
+                email=email,
+                endereco=endereco
+            )
+
+            sucesso = gerenciador_cliente.alterar(id_cliente, novo_cliente)
+
+            if sucesso:
+                print("Cliente alterado com sucesso!")
+            else:
+                print("Erro ao alterar Cliente ou ID não encontrado.")
         
+        elif opcao == "5":
+            # Remover Cliente
+            id_cliente = int(input("Digite o id do Cliente a ser removido: "))
+            
+            sucesso = gerenciador_cliente.remover(id_cliente)
+            
+            if sucesso:
+                print("Cliente removido com sucesso!")
+            else:
+                print("Nenhum Cliente encontrado com esse id, ou erro na remoção.")        
         
+        elif opcao == "6":
+            # Gerar relatorio
+            relatorio = gerenciador_cliente.gerar_relatorio_clientes()
+            print("\n--- RELATORIO ---")
+            print(relatorio)            
         
+        elif opcao == "7":
+            # Exibir um produto pelo id
+            id_cliente = int(input("Digite o id do cliente a buscar: "))
+            
+            print(gerenciador_cliente.exibir_um(id_cliente))
+        
+        elif opcao == "8":
+            # Voltar para menu
+            break
+  
+        else:
+            print("Opcao invalida!")     
+                           
 # Funcao principal
 def main():
     while True:

@@ -3,13 +3,11 @@ from gerenciador_CRUD.gerenciador import GerenciadorClientes
 from classes.produto import Produto
 from classes.cliente import Cliente
 import time
-import os  # <<< adicionado para limpar terminal
+import os  
 
-# Funcao auxiliar para limpar terminal
 def limpar_terminal():
     os.system("cls" if os.name == "nt" else "clear")
 
-# Funcao para mostrar menu de produtos
 def menu_produtos():
     gerenciador_produto = GerenciadorProdutos()
     
@@ -115,7 +113,7 @@ def menu_produtos():
             print("Opcao invalida!")
             time.sleep(2)
 
-        limpar_terminal()  # <<< limpa terminal a cada iteração
+        limpar_terminal()
 
 def menu_clientes():
     gerenciador_cliente = GerenciadorClientes()
@@ -134,6 +132,7 @@ def menu_clientes():
         opcao = input("Escolha uma opcao: ")
     
         if opcao == "1":
+            # Cadastrar Cliente
             nome = input("Nome do Cliente: ")
             telefone = input("Telefone: ")
             email = input("Email: ")
@@ -147,6 +146,7 @@ def menu_clientes():
             time.sleep(2)
 
         elif opcao == "2":
+            # Listar clientes
             clientes = gerenciador_cliente.listar_todos()
             print("\n--- LISTA DE CLIENTES ---")
             for cliente in clientes:
@@ -154,6 +154,7 @@ def menu_clientes():
             time.sleep(2)
         
         elif opcao == "3":
+            # Pesquisar por nome
             nome = input("Digite o nome para pesquisar: ")
             clientes = gerenciador_cliente.pesquisar_por_nome(nome)
             print("\n--- RESULTADO DA PESQUISA ---")
@@ -162,6 +163,7 @@ def menu_clientes():
             time.sleep(2)
 
         elif opcao == "4":
+            # Alterar dados do cliente
             id_cliente = int(input("Digite o ID do cliente que deseja alterar: "))
 
             print("Digite os novos dados do cliente:")
@@ -214,9 +216,8 @@ def menu_clientes():
             print("Opcao invalida!")     
             time.sleep(2)
         
-        limpar_terminal()  # <<< limpa terminal a cada iteração
+        limpar_terminal()
                            
-# Funcao principal
 def main():
     while True:
         print("\n=== SISTEMA PAPELARIA ===")
@@ -238,8 +239,7 @@ def main():
             print("Opcao invalida!")
             time.sleep(2)
 
-        limpar_terminal()  # <<< limpa terminal no menu principal
+        limpar_terminal()
 
-# Executa o programa
 if __name__ == "__main__":
     main()

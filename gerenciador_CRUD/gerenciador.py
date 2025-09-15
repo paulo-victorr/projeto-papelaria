@@ -1,12 +1,9 @@
-# gerenciador_CRUD/gerenciador.py
 from database.connection import get_connection
 from classes.produto import Produto
 from classes.cliente import Cliente
 
-# Classe para gerenciar os CRUD
 class GerenciadorProdutos:
     
-    # Insere um novo produto no banco
     def inserir(self, produto):
         conn = get_connection()
         if conn is None:
@@ -28,7 +25,6 @@ class GerenciadorProdutos:
         finally:
             conn.close()
     
-    # Retorna todos os produtos do banco
     def listar_todos(self):
         conn = get_connection()
         if conn is None:
@@ -51,8 +47,7 @@ class GerenciadorProdutos:
             return []
         finally:
             conn.close()
-            
-     # Pesquisa produtos por nome
+                
     def pesquisar_por_nome(self, nome):
         conn = get_connection()
         if conn is None:
@@ -76,7 +71,6 @@ class GerenciadorProdutos:
         finally:
             conn.close()
     
-    # Busca um produto pelo ID
     def exibir_um(self, id):
         conn = get_connection()
         if conn is None:
@@ -96,7 +90,6 @@ class GerenciadorProdutos:
         finally:
             conn.close()
     
-    # Atualiza um produto
     def alterar(self, id, produto):
         conn = get_connection()
         if conn is None:
@@ -119,7 +112,6 @@ class GerenciadorProdutos:
                 preco = produto.get("preco")
                 quantidade_estoque = produto.get("quantidade_estoque")
             else:
-                # assume instância de Produto
                 nome = produto.nome
                 categoria = produto.categoria
                 preco = produto.preco
@@ -142,7 +134,6 @@ class GerenciadorProdutos:
         finally:
             conn.close()
     
-    # Remove um produto pelo ID
     def remover(self, id):
         conn = get_connection()
         if conn is None:
@@ -160,7 +151,6 @@ class GerenciadorProdutos:
         finally:
             conn.close()
     
-    # Gera relatorio de produtos
     def gerar_relatorio_produtos(self):
         conn = get_connection()
         if conn is None:
@@ -193,7 +183,6 @@ class GerenciadorProdutos:
             
 class GerenciadorClientes:
     
-    # Insere um novo cliente no banco
     def inserir(self, cliente):
         conn = get_connection()
         if conn is None:
@@ -214,8 +203,7 @@ class GerenciadorClientes:
             return False
         finally:
             conn.close()      
-    
-    # Retorna todos os clientes do banco
+            
     def listar_todos(self):
         conn = get_connection()
         if conn is None:
@@ -246,7 +234,6 @@ class GerenciadorClientes:
         
         try:
             cursor = conn.cursor()
-            # Busca clientes que contenham o nome pesquisado
             cursor.execute("SELECT * FROM cliente WHERE nome ILIKE %s ORDER BY nome", (f'%{nome}%',))
             resultados = cursor.fetchall()
             
@@ -262,7 +249,6 @@ class GerenciadorClientes:
         finally:
             conn.close() 
     
-    # Atualiza um cliente
     def alterar(self, id, cliente):
         conn = get_connection()
         if conn is None:
@@ -285,7 +271,6 @@ class GerenciadorClientes:
                 email = cliente.get("email")
                 endereco = cliente.get("endereco")
             else:
-                # assume instância de Produto
                 nome = cliente.nome
                 telefone = cliente.telefone
                 email = cliente.email
@@ -325,7 +310,6 @@ class GerenciadorClientes:
         finally:
             conn.close()
 
-    # Gera relatório de clientes
     def gerar_relatorio_clientes(self):
         conn = get_connection()
         if conn is None:
@@ -346,11 +330,10 @@ class GerenciadorClientes:
             cursor.execute("SELECT COUNT(*) FROM cliente WHERE email IS NULL OR email = ''")
             sem_email = cursor.fetchone()[0]
             
-            # Cidades mais comuns (se endereco tiver cidade, ajusta a query conforme seu formato)
+            # Endereços mais comuns
             cursor.execute("SELECT endereco, COUNT(*) FROM cliente GROUP BY endereco ORDER BY COUNT(*) DESC LIMIT 3")
             top_enderecos = cursor.fetchall()
             
-            # Monta string final
             relatorio = (f"RELATÓRIO DE CLIENTES\n"
                         f"Total de clientes: {total}\n"
                         f"Sem telefone: {sem_telefone}\n"
@@ -367,7 +350,6 @@ class GerenciadorClientes:
         finally:
             conn.close()
     
-    # Busca um cliente pelo ID
     def exibir_um(self, id):
         conn = get_connection()
         if conn is None:

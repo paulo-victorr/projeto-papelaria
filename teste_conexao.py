@@ -1,7 +1,6 @@
 from database.connection import get_connection
 
 def testar_conexao():
-    # Tenta conectar com o banco
     conn = get_connection()
     
     if conn:

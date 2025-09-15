@@ -2,6 +2,12 @@ from gerenciador_CRUD.gerenciador import GerenciadorProdutos
 from gerenciador_CRUD.gerenciador import GerenciadorClientes
 from classes.produto import Produto
 from classes.cliente import Cliente
+import time
+import os  # <<< adicionado para limpar terminal
+
+# Funcao auxiliar para limpar terminal
+def limpar_terminal():
+    os.system("cls" if os.name == "nt" else "clear")
 
 # Funcao para mostrar menu de produtos
 def menu_produtos():
@@ -32,6 +38,7 @@ def menu_produtos():
                 print("Produto cadastrado com sucesso!")
             else:
                 print("Erro ao cadastrar produto.")
+            time.sleep(2)
                 
         elif opcao == "2":
             # Listar todos os produtos
@@ -39,6 +46,7 @@ def menu_produtos():
             print("\n--- LISTA DE PRODUTOS ---")
             for produto in produtos:
                 print(produto)
+            time.sleep(2)
                 
         elif opcao == "3":
             # Pesquisar por nome
@@ -47,6 +55,7 @@ def menu_produtos():
             print("\n--- RESULTADO DA PESQUISA ---")
             for produto in produtos:
                 print(produto)
+            time.sleep(2)
         
         elif opcao == "4":
             # Alterar produto
@@ -58,7 +67,6 @@ def menu_produtos():
             preco = float(input("Novo preço: "))
             quantidade = int(input("Nova quantidade em estoque: "))
 
-            # Criação do objeto Produto usando named args
             novo_produto = Produto(
                 nome=nome,
                 categoria=categoria,
@@ -72,6 +80,7 @@ def menu_produtos():
                 print("Produto alterado com sucesso!")
             else:
                 print("Erro ao alterar produto ou ID não encontrado.")
+            time.sleep(2)
         
         elif opcao == "5":
             # Remover produto
@@ -83,25 +92,30 @@ def menu_produtos():
                 print("Produto removido com sucesso!")
             else:
                 print("Nenhum produto encontrado com esse id, ou erro na remoção.")
+            time.sleep(2)
                 
         elif opcao == "6":
             # Gerar relatorio
             relatorio = gerenciador_produto.gerar_relatorio_produtos()
             print("\n--- RELATORIO ---")
             print(relatorio)
+            time.sleep(15)
             
         elif opcao == "7":
             # Exibir um produto pelo id
             id_produto = int(input("Digite o id do produto a buscar: "))
             
             print(gerenciador_produto.exibir_um(id_produto))
+            time.sleep(2)
                 
         elif opcao == "8":
-            # Voltar para menu
             break
             
         else:
             print("Opcao invalida!")
+            time.sleep(2)
+
+        limpar_terminal()  # <<< limpa terminal a cada iteração
 
 def menu_clientes():
     gerenciador_cliente = GerenciadorClientes()
@@ -120,7 +134,6 @@ def menu_clientes():
         opcao = input("Escolha uma opcao: ")
     
         if opcao == "1":
-            # Cadastrar novo produto
             nome = input("Nome do Cliente: ")
             telefone = input("Telefone: ")
             email = input("Email: ")
@@ -131,24 +144,24 @@ def menu_clientes():
                 print("Cliente cadastrado com sucesso!")
             else:
                 print("Erro ao cadastrar Cliente.")
+            time.sleep(2)
 
         elif opcao == "2":
-            # Listar todos os clientes
             clientes = gerenciador_cliente.listar_todos()
             print("\n--- LISTA DE CLIENTES ---")
             for cliente in clientes:
                 print(cliente)
+            time.sleep(2)
         
         elif opcao == "3":
-            # Pesquisar por nome
             nome = input("Digite o nome para pesquisar: ")
             clientes = gerenciador_cliente.pesquisar_por_nome(nome)
             print("\n--- RESULTADO DA PESQUISA ---")
             for cliente in clientes:
                 print(cliente)
+            time.sleep(2)
 
         elif opcao == "4":
-            # Alterar Cliente
             id_cliente = int(input("Digite o ID do cliente que deseja alterar: "))
 
             print("Digite os novos dados do cliente:")
@@ -157,7 +170,6 @@ def menu_clientes():
             email = input("Novo email: ")
             endereco = input("Novo endereco: ")
 
-            # Criação do objeto Cliente usando named args
             novo_cliente = Cliente(
                 nome=nome,
                 telefone=telefone,
@@ -171,9 +183,9 @@ def menu_clientes():
                 print("Cliente alterado com sucesso!")
             else:
                 print("Erro ao alterar Cliente ou ID não encontrado.")
+            time.sleep(2)
         
         elif opcao == "5":
-            # Remover Cliente
             id_cliente = int(input("Digite o id do Cliente a ser removido: "))
             
             sucesso = gerenciador_cliente.remover(id_cliente)
@@ -181,26 +193,28 @@ def menu_clientes():
             if sucesso:
                 print("Cliente removido com sucesso!")
             else:
-                print("Nenhum Cliente encontrado com esse id, ou erro na remoção.")        
+                print("Nenhum Cliente encontrado com esse id, ou erro na remoção.")  
+            time.sleep(2)      
         
         elif opcao == "6":
-            # Gerar relatorio
             relatorio = gerenciador_cliente.gerar_relatorio_clientes()
             print("\n--- RELATORIO ---")
-            print(relatorio)            
+            print(relatorio)    
+            time.sleep(15)        
         
         elif opcao == "7":
-            # Exibir um produto pelo id
             id_cliente = int(input("Digite o id do cliente a buscar: "))
-            
             print(gerenciador_cliente.exibir_um(id_cliente))
+            time.sleep(2)
         
         elif opcao == "8":
-            # Voltar para menu
             break
   
         else:
             print("Opcao invalida!")     
+            time.sleep(2)
+        
+        limpar_terminal()  # <<< limpa terminal a cada iteração
                            
 # Funcao principal
 def main():
@@ -218,9 +232,13 @@ def main():
             menu_clientes()    
         elif opcao == "3":
             print("Saindo do sistema...")
+            time.sleep(2)
             break
         else:
             print("Opcao invalida!")
+            time.sleep(2)
+
+        limpar_terminal()  # <<< limpa terminal no menu principal
 
 # Executa o programa
 if __name__ == "__main__":

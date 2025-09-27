@@ -1,6 +1,9 @@
 from database.connection import get_connection
 from classes.produto import Produto
 from classes.cliente import Cliente
+from classes.vendedor import Vendedor
+from classes.venda import Venda
+from classes.item_venda import ItemVenda
 
 class GerenciadorProdutos:
     
@@ -366,5 +369,165 @@ class GerenciadorClientes:
         except Exception as e:
             print("Erro ao buscar cliente:", e)
             return None
+        finally:
+            conn.close()
+
+class GerenciadorVendedores:
+
+    #Cadastramento de vendedores
+    def inserir(self, vendedor):
+        conn = get_connection()
+        if conn is None:
+            return False
+        
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO vendedores (nome, email) VALUES (%s, %s) RETURNING id",
+                (vendedor.nome, vendedor.email)
+            )
+            vendedor.id = cursor.fetchone()[0]
+            conn.commit()
+            return True
+        except Exception as e:
+            print("Erro ao inserir vendedor:", e)
+            return False
+        finally:
+            conn.close()
+    
+    # Listar todos os vendedores cadastrados
+    def listar_todos(self):
+        conn = get_connection()
+        if conn is None:
+            return []
+        
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM vendedores ORDER BY nome")
+            resultados = cursor.fetchall()
+            
+            vendedores = []
+            for linha in resultados:
+                vendedor = Vendedor(linha[0], linha[1], linha[2])
+                vendedores.append(vendedor)
+            
+            return vendedores
+        except Exception as e:
+            print("Erro ao listar vendedores:", e)
+            return []
+        finally:
+            conn.close()
+
+class GerenciadorVendas:
+    
+    def realizar_venda(self, venda, itens):
+        conn = get_connection()
+        if conn is None:
+            return False
+        
+        try:
+            cursor = conn.cursor()
+            
+            # Verificar estoque antes de vender
+            for item in itens:
+                cursor.execute("SELECT quantidade_estoque FROM produto WHERE id = %s", (item.produto_id,))
+                quantidade_estoque = cursor.fetchone()[0]
+                if quantidade_estoque < item.quantidade:
+                    print("Erro: Estoque insuficiente")
+                    return False
+            
+            # Verificar forma de pagamento
+            formas_confirmadas = ['CARTAO', 'BOLETO', 'PIX', 'BERRIES']
+            if venda.forma_pagamento in formas_confirmadas:
+                venda.status_pagamento = 'CONFIRMADO'
+            else:
+                venda.status_pagamento = 'PENDENTE'
+            
+            # Inserir venda
+            cursor.execute(
+                """INSERT INTO vendas (cliente_id, vendedor_id, forma_pagamento, status_pagamento, valor_total) 
+                   VALUES (%s, %s, %s, %s, %s) RETURNING id""",
+                (venda.cliente_id, venda.vendedor_id, venda.forma_pagamento, venda.status_pagamento, venda.valor_total)
+            )
+            venda_id = cursor.fetchone()[0]
+            
+            # Inserir itens e atualizar estoque
+            for item in itens:
+                cursor.execute(
+                    "INSERT INTO itens_venda (venda_id, produto_id, quantidade, preco_unitario) VALUES (%s, %s, %s, %s)",
+                    (venda_id, item.produto_id, item.quantidade, item.preco_unitario)
+                )
+                # Atualizar estoque
+                cursor.execute(
+                    "UPDATE produto SET quantidade_estoque = quantidade_estoque - %s WHERE id = %s",
+                    (item.quantidade, item.produto_id)
+                )
+            
+            conn.commit()
+            print("Venda realizada com sucesso!")
+            return True
+        except Exception as e:
+            print("Erro ao realizar venda:", e)
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
+    
+    # Listar pedidos do cliente
+    def listar_vendas_por_cliente(self, cliente_id):
+        conn = get_connection()
+        if conn is None:
+            return []
+        
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM vendas WHERE cliente_id = %s ORDER BY data_venda DESC",
+                (cliente_id,)
+            )
+            resultados = cursor.fetchall()
+            
+            vendas = []
+            for linha in resultados:
+                venda = Venda(linha[0], linha[1], linha[2], linha[3], linha[4], linha[5], float(linha[6]))
+                vendas.append(venda)
+            
+            return vendas
+        except Exception as e:
+            print("Erro ao listar vendas do cliente:", e)
+            return []
+        finally:
+            conn.close()
+
+class GerenciadorRelatorios:
+    def relatorio_vendas_vendedor(self, mes, ano):
+        conn = get_connection()
+        if conn is None:
+            return "Erro de conexão"
+        
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT v.nome as vendedor, COUNT(vd.id) as total_vendas, SUM(vd.valor_total) as valor_total
+                FROM vendas vd
+                JOIN vendedores v ON vd.vendedor_id = v.id
+                WHERE EXTRACT(MONTH FROM vd.data_venda) = %s AND EXTRACT(YEAR FROM vd.data_venda) = %s
+                GROUP BY v.id, v.nome
+                ORDER BY valor_total DESC
+            """, (mes, ano))
+            
+            resultados = cursor.fetchall() 
+            relatorio = f"RELATÓRIO DE VENDAS - {mes}/{ano}\n"
+            relatorio += "=" * 50 + "\n"
+            
+            for linha in resultados:
+                relatorio += f"Vendedor: {linha[0]}\n"
+                relatorio += f"Total de vendas: {linha[1]}\n"
+                relatorio += f"Valor total: R$ {linha[2]:.2f}\n"
+                relatorio += "-" * 30 + "\n"
+            
+            return relatorio
+        except Exception as e:
+            return f"Erro ao gerar relatório: {e}"
         finally:
             conn.close()

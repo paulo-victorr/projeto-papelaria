@@ -44,7 +44,7 @@ def create_tables():
             )
         """)
         
-        # tabela de vendas - já com as constraints na criação
+        # tabela de vendas - constraints
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS vendas (
                 id SERIAL PRIMARY KEY,
@@ -57,7 +57,7 @@ def create_tables():
             )
         """)
         
-        # tabela de itens_venda - já com constraint na criação
+        # tabela de itens_venda - constraint
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS itens_venda (
                 id SERIAL PRIMARY KEY,

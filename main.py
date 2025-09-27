@@ -36,7 +36,7 @@ def menu_produtos():
                 print("Produto cadastrado com sucesso!")
             else:
                 print("Erro ao cadastrar produto.")
-            time.sleep(2)
+            time.sleep(5)
                 
         elif opcao == "2":
             # Listar todos os produtos
@@ -44,7 +44,7 @@ def menu_produtos():
             print("\n--- LISTA DE PRODUTOS ---")
             for produto in produtos:
                 print(produto)
-            time.sleep(2)
+            time.sleep(10)
                 
         elif opcao == "3":
             # Pesquisar por nome
@@ -53,7 +53,7 @@ def menu_produtos():
             print("\n--- RESULTADO DA PESQUISA ---")
             for produto in produtos:
                 print(produto)
-            time.sleep(2)
+            time.sleep(5)
         
         elif opcao == "4":
             # Alterar produto
@@ -104,14 +104,14 @@ def menu_produtos():
             id_produto = int(input("Digite o id do produto a buscar: "))
             
             print(gerenciador_produto.exibir_um(id_produto))
-            time.sleep(2)
+            time.sleep(5)
                 
         elif opcao == "8":
             break
             
         else:
             print("Opcao invalida!")
-            time.sleep(2)
+            time.sleep(5)
 
         limpar_terminal()
 
@@ -143,7 +143,7 @@ def menu_clientes():
                 print("Cliente cadastrado com sucesso!")
             else:
                 print("Erro ao cadastrar Cliente.")
-            time.sleep(2)
+            time.sleep(5)
 
         elif opcao == "2":
             # Listar clientes
@@ -207,14 +207,14 @@ def menu_clientes():
         elif opcao == "7":
             id_cliente = int(input("Digite o id do cliente a buscar: "))
             print(gerenciador_cliente.exibir_um(id_cliente))
-            time.sleep(2)
+            time.sleep(5)
         
         elif opcao == "8":
             break
   
         else:
             print("Opcao invalida!")     
-            time.sleep(2)
+            time.sleep(5)
         
         limpar_terminal()
                            
@@ -233,11 +233,11 @@ def main():
             menu_clientes()    
         elif opcao == "3":
             print("Saindo do sistema...")
-            time.sleep(2)
+            time.sleep(5)
             break
         else:
             print("Opcao invalida!")
-            time.sleep(2)
+            time.sleep(5)
 
         limpar_terminal()
 

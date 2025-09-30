@@ -3,5 +3,5 @@ DB_CONFIG = {
     'database': 'postgres',
     'user': 'postgres',
     'password': 'pauloofoda375',
-    'port': '5432'
+    'port': '5432',
 }

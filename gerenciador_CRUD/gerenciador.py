@@ -15,10 +15,9 @@ class GerenciadorProdutos:
         try:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO produto (nome, categoria, preco, quantidade_estoque) VALUES (%s, %s, %s, %s) RETURNING id",
-                (produto.nome, produto.categoria, produto.preco, produto.quantidade_estoque)
+                "INSERT INTO produto (nome, categoria, preco, quantidade_estoque, fabricado_mari) VALUES (%s, %s, %s, %s, %s) RETURNING id",
+                (produto.nome, produto.categoria, produto.preco, produto.quantidade_estoque, produto.fabricado_mari)
             )
-            # Pega o ID gerado automaticamente
             produto.id = cursor.fetchone()[0]
             conn.commit()
             return True
@@ -35,13 +34,12 @@ class GerenciadorProdutos:
         
         try:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM produto ORDER BY nome")
+            cursor.execute("SELECT id, nome, categoria, preco, quantidade_estoque, fabricado_mari FROM produto ORDER BY nome")
             resultados = cursor.fetchall()
             
             produtos = []
             for linha in resultados:
-                # Cria objeto Produto para cada linha do banco
-                produto = Produto(linha[0], linha[1], linha[2], float(linha[3]), linha[4])
+                produto = Produto(linha[0], linha[1], linha[2], float(linha[3]), linha[4], linha[5])
                 produtos.append(produto)
             
             return produtos
@@ -58,18 +56,68 @@ class GerenciadorProdutos:
         
         try:
             cursor = conn.cursor()
-            # Busca produtos que contenham o nome pesquisado
-            cursor.execute("SELECT * FROM produto WHERE nome ILIKE %s ORDER BY nome", (f'%{nome}%',))
+            cursor.execute("SELECT id, nome, categoria, preco, quantidade_estoque, fabricado_mari FROM produto WHERE nome ILIKE %s ORDER BY nome", (f'%{nome}%',))
             resultados = cursor.fetchall()
             
             produtos = []
             for linha in resultados:
-                produto = Produto(linha[0], linha[1], linha[2], float(linha[3]), linha[4])
+                produto = Produto(linha[0], linha[1], linha[2], float(linha[3]), linha[4], linha[5])
                 produtos.append(produto)
             
             return produtos
         except Exception as e:
             print("Erro ao pesquisar produtos:", e)
+            return []
+        finally:
+            conn.close()
+    
+    def pesquisar_por_categoria(self, categoria):
+        conn = get_connection()
+        if conn is None:
+            return []
+        try:
+            cursor = conn.cursor()
+            sql = "SELECT id, nome, categoria, preco, quantidade_estoque, fabricado_mari FROM produto WHERE categoria ILIKE %s ORDER BY nome"
+            cursor.execute(sql, (f'%{categoria}%',))
+            resultados = cursor.fetchall()
+            produtos = [Produto(l[0], l[1], l[2], float(l[3]), l[4], l[5]) for l in resultados]
+            return produtos
+        except Exception as e:
+            print("Erro ao pesquisar por categoria:", e)
+            return []
+        finally:
+            conn.close()
+
+    def pesquisar_por_faixa_de_preco(self, preco_min, preco_max):
+        conn = get_connection()
+        if conn is None:
+            return []
+        try:
+            cursor = conn.cursor()
+            sql = "SELECT id, nome, categoria, preco, quantidade_estoque, fabricado_mari FROM produto WHERE preco BETWEEN %s AND %s ORDER BY preco"
+            cursor.execute(sql, (preco_min, preco_max))
+            resultados = cursor.fetchall()
+            produtos = [Produto(l[0], l[1], l[2], float(l[3]), l[4], l[5]) for l in resultados]
+            return produtos
+        except Exception as e:
+            print("Erro ao pesquisar por faixa de preço:", e)
+            return []
+        finally:
+            conn.close()
+
+    def pesquisar_fabricados_em_mari(self):
+        conn = get_connection()
+        if conn is None:
+            return []
+        try:
+            cursor = conn.cursor()
+            sql = "SELECT id, nome, categoria, preco, quantidade_estoque, fabricado_mari FROM produto WHERE fabricado_mari = TRUE ORDER BY nome"
+            cursor.execute(sql)
+            resultados = cursor.fetchall()
+            produtos = [Produto(l[0], l[1], l[2], float(l[3]), l[4], l[5]) for l in resultados]
+            return produtos
+        except Exception as e:
+            print("Erro ao pesquisar fabricados em Mari:", e)
             return []
         finally:
             conn.close()
@@ -81,11 +129,11 @@ class GerenciadorProdutos:
         
         try:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM produto WHERE id = %s", (id,))
+            cursor.execute("SELECT id, nome, categoria, preco, quantidade_estoque, fabricado_mari FROM produto WHERE id = %s", (id,))
             linha = cursor.fetchone()
             
             if linha:
-                return Produto(linha[0], linha[1], linha[2], float(linha[3]), linha[4])
+                return Produto(linha[0], linha[1], linha[2], float(linha[3]), linha[4], linha[5])
             return None
         except Exception as e:
             print("Erro ao buscar produto:", e)
@@ -97,37 +145,21 @@ class GerenciadorProdutos:
         conn = get_connection()
         if conn is None:
             return False
-
         try:
             cursor = conn.cursor()
             sql = """
                 UPDATE produto
-                SET nome = %s, categoria = %s, preco = %s, quantidade_estoque = %s
+                SET nome = %s, categoria = %s, preco = %s, quantidade_estoque = %s, fabricado_mari = %s
                 WHERE id = %s
             """
-
-            # suporte para vários formatos de 'produto'
-            if isinstance(produto, (tuple, list)) and len(produto) >= 4:
-                nome, categoria, preco, quantidade_estoque = produto[:4]
-            elif isinstance(produto, dict):
-                nome = produto.get("nome")
-                categoria = produto.get("categoria")
-                preco = produto.get("preco")
-                quantidade_estoque = produto.get("quantidade_estoque")
-            else:
-                nome = produto.nome
-                categoria = produto.categoria
-                preco = produto.preco
-                quantidade_estoque = produto.quantidade_estoque
-
             valores = (
-                str(nome),
-                str(categoria),
-                float(preco),
-                int(quantidade_estoque),
+                str(produto.nome),
+                str(produto.categoria),
+                float(produto.preco),
+                int(produto.quantidade_estoque),
+                bool(produto.fabricado_mari),
                 int(id)
             )
-
             cursor.execute(sql, valores)
             conn.commit()
             return cursor.rowcount > 0
@@ -146,7 +178,6 @@ class GerenciadorProdutos:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM produto WHERE id = %s", (id,))
             conn.commit()
-            # Verifica se alguma linha foi removida
             return cursor.rowcount > 0
         except Exception as e:
             print("Erro ao remover produto:", e)
@@ -161,16 +192,10 @@ class GerenciadorProdutos:
         
         try:
             cursor = conn.cursor()
-            
-            # Total de produtos
             cursor.execute("SELECT COUNT(*) FROM produto")
             total = cursor.fetchone()[0]
-            
-            # Valor total do estoque
             cursor.execute("SELECT SUM(preco * quantidade_estoque) FROM produto")
             valor_total = cursor.fetchone()[0] or 0
-            
-            # Produtos com estoque baixo
             cursor.execute("SELECT COUNT(*) FROM produto WHERE quantidade_estoque < 10")
             estoque_baixo = cursor.fetchone()[0]
             
@@ -181,6 +206,25 @@ class GerenciadorProdutos:
                     
         except Exception as e:
             return f"Erro ao gerar relatorio: {e}"
+        finally:
+            conn.close()
+    
+    # NOVO: Método para buscar produtos com estoque baixo (< 5)
+    def listar_produtos_com_estoque_baixo(self):
+        conn = get_connection()
+        if conn is None:
+            return []
+        try:
+            cursor = conn.cursor()
+            # A query busca produtos onde a quantidade em estoque é menor que 5
+            sql = "SELECT id, nome, categoria, preco, quantidade_estoque, fabricado_mari FROM produto WHERE quantidade_estoque < 5 ORDER BY quantidade_estoque ASC"
+            cursor.execute(sql)
+            resultados = cursor.fetchall()
+            produtos = [Produto(l[0], l[1], l[2], float(l[3]), l[4], l[5]) for l in resultados]
+            return produtos
+        except Exception as e:
+            print("Erro ao listar produtos com estoque baixo:", e)
+            return []
         finally:
             conn.close()
             
@@ -194,8 +238,8 @@ class GerenciadorClientes:
         try:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO cliente (nome, telefone, email, endereco) VALUES (%s, %s, %s, %s) RETURNING id",
-                (cliente.nome, cliente.telefone, cliente.email, cliente.endereco)
+                "INSERT INTO cliente (nome, telefone, email, endereco, cidade, time_futebol, assiste_one_piece ) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                (cliente.nome, cliente.telefone, cliente.email, cliente.endereco, cliente.cidade, cliente.time_futebol, cliente.assiste_one_piece)
             )
             # Pega o ID gerado automaticamente
             cliente.id = cursor.fetchone()[0]
@@ -220,7 +264,7 @@ class GerenciadorClientes:
             clientes = []
             for linha in resultados:
                 # Cria objeto clientes para cada linha do banco
-                cliente = Cliente(linha[0], linha[1], linha[2], (linha[3]), linha[4])
+                cliente = Cliente(linha[0], linha[1], linha[2], (linha[3]), linha[4], linha[5], linha[6], linha[7])
                 clientes.append(cliente)
             
             return clientes
@@ -425,39 +469,60 @@ class GerenciadorVendas:
         if conn is None:
             return False
         
+        # NOVO: Instanciar o GerenciadorClientes para poder buscar os dados do cliente
+        gerenciador_clientes = GerenciadorClientes()
+
         try:
             cursor = conn.cursor()
             
-            # Verificar estoque antes de vender
+            # Etapa 1: Verificar estoque antes de vender
             for item in itens:
                 cursor.execute("SELECT quantidade_estoque FROM produto WHERE id = %s", (item.produto_id,))
                 quantidade_estoque = cursor.fetchone()[0]
                 if quantidade_estoque < item.quantidade:
                     print("Erro: Estoque insuficiente")
+                    conn.rollback() # NOVO: Desfazer a transação em caso de erro
                     return False
             
-            # Verificar forma de pagamento
+            # NOVO Bloco: Calcular valor bruto e aplicar o desconto
+            # --------------------------------------------------------------------
+            # Etapa 2: Calcular o valor bruto somando o subtotal de cada item
+            valor_bruto = sum(item.calcular_subtotal() for item in itens)
+
+            # Etapa 3: Buscar o cliente para verificar se ele tem direito a desconto
+            cliente = gerenciador_clientes.exibir_um(venda.cliente_id)
+            if not cliente:
+                print(f"Erro: Cliente com ID {venda.cliente_id} não encontrado.")
+                conn.rollback()
+                return False
+
+            # Etapa 4: Calcular o valor final com o desconto aplicado
+            percentual_desconto = cliente.calcular_desconto()
+            valor_desconto = (valor_bruto * percentual_desconto) / 100
+            venda.valor_total = valor_bruto - valor_desconto # O valor_total do objeto 'venda' é atualizado aqui
+            # --------------------------------------------------------------------
+
+            # Etapa 5: Verificar forma de pagamento (lógica original mantida)
             formas_confirmadas = ['CARTAO', 'BOLETO', 'PIX', 'BERRIES']
-            if venda.forma_pagamento in formas_confirmadas:
+            if venda.forma_pagamento.upper() in formas_confirmadas:
                 venda.status_pagamento = 'CONFIRMADO'
             else:
                 venda.status_pagamento = 'PENDENTE'
             
-            # Inserir venda
+            # Etapa 6: Inserir a venda com o valor_total já com desconto
             cursor.execute(
                 """INSERT INTO vendas (cliente_id, vendedor_id, forma_pagamento, status_pagamento, valor_total) 
                    VALUES (%s, %s, %s, %s, %s) RETURNING id""",
-                (venda.cliente_id, venda.vendedor_id, venda.forma_pagamento, venda.status_pagamento, venda.valor_total)
+                (venda.cliente_id, venda.vendedor_id, venda.forma_pagamento, venda.status_pagamento, venda.valor_total) # ALTERADO: agora usa o valor com desconto
             )
             venda_id = cursor.fetchone()[0]
             
-            # Inserir itens e atualizar estoque
+            # Etapa 7: Inserir itens e atualizar estoque
             for item in itens:
                 cursor.execute(
                     "INSERT INTO itens_venda (venda_id, produto_id, quantidade, preco_unitario) VALUES (%s, %s, %s, %s)",
                     (venda_id, item.produto_id, item.quantidade, item.preco_unitario)
                 )
-                # Atualizar estoque
                 cursor.execute(
                     "UPDATE produto SET quantidade_estoque = quantidade_estoque - %s WHERE id = %s",
                     (item.quantidade, item.produto_id)
@@ -465,6 +530,8 @@ class GerenciadorVendas:
             
             conn.commit()
             print("Venda realizada com sucesso!")
+            # NOVO: Exibir detalhes do desconto para feedback
+            print(f"Detalhes: Valor Bruto: R${valor_bruto:.2f} | Desconto: {percentual_desconto}% | Valor Final: R${venda.valor_total:.2f}")
             return True
         except Exception as e:
             print("Erro ao realizar venda:", e)

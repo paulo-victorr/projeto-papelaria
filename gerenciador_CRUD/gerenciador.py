@@ -105,6 +105,26 @@ class GerenciadorProdutos:
         finally:
             conn.close()
 
+    # NOVO MÉTODO QUE CHAMA A STORED PROCEDURE
+    def reabastecer_estoque(self, produto_id, quantidade):
+        """Chama a stored procedure sp_reabastecer_estoque no banco de dados."""
+        conn = get_connection()
+        if conn is None:
+            return False
+        
+        try:
+            cursor = conn.cursor()
+            # A sintaxe para chamar uma procedure é o comando CALL
+            cursor.execute("CALL sp_reabastecer_estoque(%s, %s)", (produto_id, quantidade))
+            conn.commit()
+            return True
+        except Exception as e:
+            print(f"Erro ao reabastecer estoque: {e}")
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
+    
     def pesquisar_fabricados_em_mari(self):
         conn = get_connection()
         if conn is None:
@@ -467,57 +487,49 @@ class GerenciadorVendas:
     def realizar_venda(self, venda, itens):
         conn = get_connection()
         if conn is None:
-            return False
-        
-        # NOVO: Instanciar o GerenciadorClientes para poder buscar os dados do cliente
+            return False, "Erro de conexão com o banco de dados."
+
         gerenciador_clientes = GerenciadorClientes()
 
         try:
             cursor = conn.cursor()
             
-            # Etapa 1: Verificar estoque antes de vender
             for item in itens:
-                cursor.execute("SELECT quantidade_estoque FROM produto WHERE id = %s", (item.produto_id,))
-                quantidade_estoque = cursor.fetchone()[0]
+                cursor.execute("SELECT quantidade_estoque FROM produto WHERE id = %s FOR UPDATE", (item.produto_id,))
+                resultado = cursor.fetchone()
+                if not resultado:
+                    conn.rollback()
+                    return False, f"Produto com ID {item.produto_id} não encontrado."
+                
+                quantidade_estoque = resultado[0]
                 if quantidade_estoque < item.quantidade:
-                    print("Erro: Estoque insuficiente")
-                    conn.rollback() # NOVO: Desfazer a transação em caso de erro
-                    return False
+                    conn.rollback()
+                    return False, f"Estoque insuficiente para o produto ID {item.produto_id}."
             
-            # NOVO Bloco: Calcular valor bruto e aplicar o desconto
-            # --------------------------------------------------------------------
-            # Etapa 2: Calcular o valor bruto somando o subtotal de cada item
             valor_bruto = sum(item.calcular_subtotal() for item in itens)
-
-            # Etapa 3: Buscar o cliente para verificar se ele tem direito a desconto
+            
             cliente = gerenciador_clientes.exibir_um(venda.cliente_id)
             if not cliente:
-                print(f"Erro: Cliente com ID {venda.cliente_id} não encontrado.")
                 conn.rollback()
-                return False
-
-            # Etapa 4: Calcular o valor final com o desconto aplicado
+                return False, "Cliente não encontrado."
+                
             percentual_desconto = cliente.calcular_desconto()
             valor_desconto = (valor_bruto * percentual_desconto) / 100
-            venda.valor_total = valor_bruto - valor_desconto # O valor_total do objeto 'venda' é atualizado aqui
-            # --------------------------------------------------------------------
+            venda.valor_total = valor_bruto - valor_desconto
 
-            # Etapa 5: Verificar forma de pagamento (lógica original mantida)
             formas_confirmadas = ['CARTAO', 'BOLETO', 'PIX', 'BERRIES']
             if venda.forma_pagamento.upper() in formas_confirmadas:
                 venda.status_pagamento = 'CONFIRMADO'
             else:
                 venda.status_pagamento = 'PENDENTE'
             
-            # Etapa 6: Inserir a venda com o valor_total já com desconto
             cursor.execute(
                 """INSERT INTO vendas (cliente_id, vendedor_id, forma_pagamento, status_pagamento, valor_total) 
-                   VALUES (%s, %s, %s, %s, %s) RETURNING id""",
-                (venda.cliente_id, venda.vendedor_id, venda.forma_pagamento, venda.status_pagamento, venda.valor_total) # ALTERADO: agora usa o valor com desconto
+                VALUES (%s, %s, %s, %s, %s) RETURNING id""",
+                (venda.cliente_id, venda.vendedor_id, venda.forma_pagamento, venda.status_pagamento, venda.valor_total)
             )
             venda_id = cursor.fetchone()[0]
             
-            # Etapa 7: Inserir itens e atualizar estoque
             for item in itens:
                 cursor.execute(
                     "INSERT INTO itens_venda (venda_id, produto_id, quantidade, preco_unitario) VALUES (%s, %s, %s, %s)",
@@ -529,14 +541,16 @@ class GerenciadorVendas:
                 )
             
             conn.commit()
-            print("Venda realizada com sucesso!")
-            # NOVO: Exibir detalhes do desconto para feedback
-            print(f"Detalhes: Valor Bruto: R${valor_bruto:.2f} | Desconto: {percentual_desconto}% | Valor Final: R${venda.valor_total:.2f}")
-            return True
+            
+            # ALTERADO: Agora retorna uma tupla com (True, mensagem_de_sucesso)
+            mensagem_sucesso = (f"Venda realizada com sucesso!\n"
+                                f"Detalhes: Valor Bruto: R${valor_bruto:.2f} | Desconto: {percentual_desconto}% | Valor Final: R${venda.valor_total:.2f}")
+            return True, mensagem_sucesso
         except Exception as e:
             print("Erro ao realizar venda:", e)
             conn.rollback()
-            return False
+            # ALTERADO: Agora retorna uma tupla com (False, mensagem_de_erro)
+            return False, f"Erro interno ao realizar venda: {e}"
         finally:
             conn.close()
     
@@ -584,17 +598,38 @@ class GerenciadorRelatorios:
             """, (mes, ano))
             
             resultados = cursor.fetchall() 
-            relatorio = f"RELATÓRIO DE VENDAS - {mes}/{ano}\n"
+            relatorio = f"RELATÓRIO DE VENDAS POR VENDEDOR - {mes}/{ano}\n"
             relatorio += "=" * 50 + "\n"
+            
+            if not resultados:
+                relatorio += "Nenhuma venda encontrada para este período.\n"
             
             for linha in resultados:
                 relatorio += f"Vendedor: {linha[0]}\n"
                 relatorio += f"Total de vendas: {linha[1]}\n"
-                relatorio += f"Valor total: R$ {linha[2]:.2f}\n"
+                relatorio += f"Valor total: R$ {float(linha[2]):.2f}\n"
                 relatorio += "-" * 30 + "\n"
             
             return relatorio
         except Exception as e:
             return f"Erro ao gerar relatório: {e}"
+        finally:
+            conn.close()
+
+    # NOVO MÉTODO QUE USA A VIEW
+    def obter_relatorio_detalhado(self):
+        conn = get_connection()
+        if conn is None:
+            return [] # Retorna lista vazia em caso de erro
+
+        try:
+            cursor = conn.cursor()
+            # A consulta agora é extremamente simples!
+            cursor.execute("SELECT * FROM v_relatorio_vendas_detalhado")
+            resultados = cursor.fetchall()
+            return resultados
+        except Exception as e:
+            print("Erro ao obter relatório detalhado:", e)
+            return []
         finally:
             conn.close()

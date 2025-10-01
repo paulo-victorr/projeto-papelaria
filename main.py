@@ -1,575 +1,514 @@
+import time
+import os
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+# Importações da biblioteca Rich para a interface
+from rich.console import Console
+from rich.table import Table
+from rich.prompt import Prompt, Confirm
+from rich.panel import Panel
+from rich.text import Text
+
+# Importação das suas classes de gerenciador e modelo
 from gerenciador_CRUD.gerenciador import GerenciadorProdutos, GerenciadorClientes, GerenciadorVendas, GerenciadorRelatorios, GerenciadorVendedores
 from classes.produto import Produto
 from classes.cliente import Cliente
 from classes.venda import Venda
 from classes.item_venda import ItemVenda
 from classes.vendedor import Vendedor
-import time
-import os  
+
+# Inicializa o console do Rich para uma saída bonita
+console = Console()
+
+# --- FUNÇÕES AUXILIARES DE INTERFACE ---
 
 def limpar_terminal():
     os.system("cls" if os.name == "nt" else "clear")
+
+def imprimir_cabecalho(texto, cor="bold cyan"):
+    limpar_terminal()
+    console.print(Panel(Text(texto, justify="center", style="white"), style=cor, title_align="left"))
+
+def aguardar_enter():
+    Prompt.ask("\n[bold]Pressione Enter para continuar...[/bold]")
+
+# --- MENUS DE GERENCIAMENTO (CRUD) ---
 
 def menu_produtos():
     gerenciador_produto = GerenciadorProdutos()
     
     while True:
-        limpar_terminal()
-        print("\n--- GERENCIAR PRODUTOS ---")
-        print("1. Cadastrar novo produto")
-        print("2. Listar todos os produtos")
-        print("3. Pesquisar produtos (filtros)")
-        print("4. Alterar produto")
-        print("5. Remover produto")
-        print("6. Gerar relatório de produtos")
-        print("7. Buscar por ID")
-        print("8. Voltar ao menu principal")
+        imprimir_cabecalho("Gerenciar Produtos")
+        menu = Table(show_header=False, box=None, padding=(0, 2))
+        menu.add_column(style="magenta", justify="right")
+        menu.add_column()
+        menu.add_row("1", "Cadastrar Novo Produto")
+        menu.add_row("2", "Listar Todos os Produtos")
+        # Adicionar mais opções aqui se necessário
+        menu.add_row("3", "Voltar")
+        console.print(menu, justify="center")
         
-        opcao = input("Escolha uma opção: ").lower()
+        opcao = Prompt.ask("[bold]Escolha uma opção[/bold]", choices=["1", "2", "3"], default="3")
         
         if opcao == "1":
+            imprimir_cabecalho("Cadastrar Novo Produto")
             try:
-                print("\n--- CADASTRO DE NOVO PRODUTO ---")
-                nome = input("Nome do produto: ")
-                categoria = input("Categoria: ")
-                preco = float(input("Preço: "))
-                estoque = int(input("Quantidade em estoque: "))
-                fabricado_mari_str = input("É fabricado em Mari? (s/n): ").lower()
-                fabricado_mari = True if fabricado_mari_str == 's' else False
+                nome = Prompt.ask("Nome do produto")
+                categoria = Prompt.ask("Categoria")
+                preco = float(Prompt.ask("Preço"))
+                estoque = int(Prompt.ask("Quantidade em estoque"))
+                fabricado_mari = Confirm.ask("É fabricado em Mari?")
                 
                 novo_produto = Produto(None, nome, categoria, preco, estoque, fabricado_mari)
                 if gerenciador_produto.inserir(novo_produto):
-                    print("Produto cadastrado com sucesso!")
+                    console.print("\n:heavy_check_mark: [bold green]Produto cadastrado com sucesso![/bold green]")
                 else:
-                    print("Erro ao cadastrar produto.")
+                    console.print("\n:x: [bold red]Erro ao cadastrar produto.[/bold red]")
             except ValueError:
-                print("Erro: Preço e estoque devem ser números.")
+                console.print("\n:x: [bold red]Erro: Preço e estoque devem ser números.[/bold red]")
             time.sleep(2)
                 
         elif opcao == "2":
+            imprimir_cabecalho("Lista de Produtos")
             produtos = gerenciador_produto.listar_todos()
-            print("\n--- LISTA DE PRODUTOS ---")
+            tabela = Table(title="Produtos Cadastrados", expand=True, header_style="bold magenta")
+            tabela.add_column("ID", style="cyan")
+            tabela.add_column("Nome", style="white")
+            tabela.add_column("Categoria", style="yellow")
+            tabela.add_column("Preço", style="green", justify="right")
+            tabela.add_column("Estoque", style="magenta", justify="right")
+            tabela.add_column("Fab. Mari", style="blue", justify="center")
+
             for produto in produtos:
-                print(produto)
-            input("\nPressione Enter para continuar...")
-                
+                tabela.add_row(
+                    str(produto.id),
+                    produto.nome,
+                    produto.categoria,
+                    f"R$ {produto.preco:.2f}",
+                    str(produto.quantidade_estoque),
+                    "Sim" if produto.fabricado_mari else "Não"
+                )
+            console.print(tabela)
+            aguardar_enter()
+
         elif opcao == "3":
-            while True:
-                limpar_terminal()
-                print("\n--- MENU DE PESQUISA DE PRODUTOS ---")
-                print("1. Pesquisar por nome")
-                print("2. Pesquisar por categoria")
-                print("3. Pesquisar por faixa de preço")
-                print("4. Listar fabricados em Mari")
-                print("5. Voltar")
-                
-                sub_opcao = input("Escolha o tipo de pesquisa: ").lower()
-                
-                produtos_encontrados = []
-                if sub_opcao == "1":
-                    nome = input("Digite o nome para pesquisar: ")
-                    produtos_encontrados = gerenciador_produto.pesquisar_por_nome(nome)
-                elif sub_opcao == "2":
-                    categoria = input("Digite a categoria para pesquisar: ")
-                    produtos_encontrados = gerenciador_produto.pesquisar_por_categoria(categoria)
-                elif sub_opcao == "3":
-                    try:
-                        preco_min = float(input("Digite o preço mínimo: "))
-                        preco_max = float(input("Digite o preço máximo: "))
-                        produtos_encontrados = gerenciador_produto.pesquisar_por_faixa_de_preco(preco_min, preco_max)
-                    except ValueError:
-                        print("Erro: Preços inválidos. Por favor, digite números.")
-                elif sub_opcao == "4":
-                    produtos_encontrados = gerenciador_produto.pesquisar_fabricados_em_mari()
-                elif sub_opcao == "5":
-                    break
-                else:
-                    print("Opção inválida!")
-
-                print("\n--- RESULTADO DA PESQUISA ---")
-                if produtos_encontrados:
-                    for produto in produtos_encontrados:
-                        print(produto)
-                else:
-                    print("Nenhum produto encontrado com os critérios informados.")
-                input("\nPressione Enter para continuar...")
-        
-        elif opcao == "4":
-            try:
-                id_produto = int(input("Digite o ID do produto que deseja alterar: "))
-                produto_existente = gerenciador_produto.exibir_um(id_produto)
-                if not produto_existente:
-                    print("Produto não encontrado.")
-                    time.sleep(2)
-                    continue
-                
-                print("\nDigite os novos dados (deixe em branco para manter o valor atual):")
-                nome = input(f"Novo nome ({produto_existente.nome}): ") or produto_existente.nome
-                categoria = input(f"Nova categoria ({produto_existente.categoria}): ") or produto_existente.categoria
-                preco_str = input(f"Novo preço ({produto_existente.preco}): ")
-                preco = float(preco_str) if preco_str else produto_existente.preco
-                estoque_str = input(f"Nova quantidade ({produto_existente.quantidade_estoque}): ")
-                estoque = int(estoque_str) if estoque_str else produto_existente.quantidade_estoque
-                fabricado_mari_str = input(f"Fabricado em Mari? (s/n) ({'s' if produto_existente.fabricado_mari else 'n'}): ").lower()
-                fabricado_mari = (True if fabricado_mari_str == 's' else False) if fabricado_mari_str else produto_existente.fabricado_mari
-
-                produto_atualizado = Produto(id_produto, nome, categoria, preco, estoque, fabricado_mari)
-                if gerenciador_produto.alterar(id_produto, produto_atualizado):
-                    print("Produto alterado com sucesso!")
-                else:
-                    print("Erro ao alterar produto.")
-            except ValueError:
-                print("Erro: O ID do produto deve ser um número.")
-            time.sleep(2)
-        
-        elif opcao == "5":
-            try:
-                id_produto = int(input("Digite o ID do produto a ser removido: "))
-                if gerenciador_produto.remover(id_produto):
-                    print("Produto removido com sucesso!")
-                else:
-                    print("Nenhum produto encontrado com esse ID, ou erro na remoção.")
-            except ValueError:
-                print("Erro: O ID do produto deve ser um número.")
-            time.sleep(2)
-                
-        elif opcao == "6":
-            relatorio = gerenciador_produto.gerar_relatorio_produtos()
-            print("\n--- RELATÓRIO DE PRODUTOS ---")
-            print(relatorio)
-            input("\nPressione Enter para continuar...")
-            
-        elif opcao == "7":
-            try:
-                id_produto = int(input("Digite o ID do produto a buscar: "))
-                produto = gerenciador_produto.exibir_um(id_produto)
-                if produto:
-                    print(produto)
-                else:
-                    print("Produto não encontrado.")
-            except ValueError:
-                print("Erro: O ID do produto deve ser um número.")
-            time.sleep(5)
-                
-        elif opcao == "8":
             break
-            
-        else:
-            print("Opção inválida!")
-            time.sleep(2)
 
 def menu_clientes():
     gerenciador_cliente = GerenciadorClientes()
     
     while True:
-        limpar_terminal()
-        print("\n--- GERENCIAR CLIENTES ---")
-        print("1. Cadastrar novo cliente")
-        print("2. Listar todos os clientes")
-        print("3. Pesquisar cliente por nome")
-        print("4. Alterar dados do cliente")
-        print("5. Remover cliente")
-        print("6. Gerar relatório de clientes")
-        print("7. Buscar por ID")
-        print("8. Voltar ao menu principal")
-        
-        opcao = input("Escolha uma opção: ").lower()
-    
+        imprimir_cabecalho("Gerenciar Clientes")
+        menu = Table(show_header=False, box=None, padding=(0, 2))
+        menu.add_column(style="magenta", justify="right")
+        menu.add_column()
+        menu.add_row("1", "Cadastrar Novo Cliente")
+        menu.add_row("2", "Listar Todos os Clientes")
+        menu.add_row("3", "Voltar")
+        console.print(menu, justify="center")
+
+        opcao = Prompt.ask("[bold]Escolha uma opção[/bold]", choices=["1", "2", "3"], default="3")
+
         if opcao == "1":
-            print("\n--- CADASTRO DE NOVO CLIENTE ---")
-            nome = input("Nome do Cliente: ")
-            telefone = input("Telefone: ")
-            email = input("Email: ").lower()
-            endereco = input("Endereço: ")
-            cidade = input("Cidade: ").lower()
-            time_futebol = input("Time de futebol: ").lower()
-            assiste_one_piece_str = input("Assiste One Piece? [S/N] ").lower()
-            assiste_one_piece = True if assiste_one_piece_str == "s" else False
+            imprimir_cabecalho("Cadastrar Novo Cliente")
+            nome = Prompt.ask("Nome do Cliente")
+            telefone = Prompt.ask("Telefone")
+            email = Prompt.ask("Email").lower()
+            endereco = Prompt.ask("Endereço")
+            cidade = Prompt.ask("Cidade").lower()
+            time_futebol = Prompt.ask("Time de futebol").lower()
+            assiste_one_piece = Confirm.ask("Assiste One Piece?")
             
             novo_cliente = Cliente(None, nome, telefone, email, endereco, cidade, time_futebol, assiste_one_piece)
             if gerenciador_cliente.inserir(novo_cliente):
-                print("Cliente cadastrado com sucesso!")
+                console.print("\n:heavy_check_mark: [bold green]Cliente cadastrado com sucesso![/bold green]")
             else:
-                print("Erro ao cadastrar Cliente.")
-            time.sleep(3)
+                console.print("\n:x: [bold red]Erro ao cadastrar cliente.[/bold red]")
+            time.sleep(2)
 
         elif opcao == "2":
+            imprimir_cabecalho("Lista de Clientes")
             clientes = gerenciador_cliente.listar_todos()
-            print("\n--- LISTA DE CLIENTES ---")
+            tabela = Table(title="Clientes Cadastrados", expand=True, header_style="bold magenta")
+            tabela.add_column("ID", style="cyan")
+            tabela.add_column("Nome", style="white")
+            tabela.add_column("Telefone", style="yellow")
+            tabela.add_column("Email", style="green")
+            tabela.add_column("Cidade", style="magenta")
+            
             for cliente in clientes:
-                print(cliente)
-            input("\nPressione Enter para continuar...")
-        
+                tabela.add_row(str(cliente.id), cliente.nome, cliente.telefone, cliente.email, cliente.cidade)
+            console.print(tabela)
+            aguardar_enter()
+
         elif opcao == "3":
-            nome = input("Digite o nome para pesquisar: ")
-            clientes = gerenciador_cliente.pesquisar_por_nome(nome)
-            print("\n--- RESULTADO DA PESQUISA ---")
-            for cliente in clientes:
-                print(cliente)
-            input("\nPressione Enter para continuar...")
-
-        elif opcao == "4":
-            try:
-                id_cliente = int(input("Digite o ID do cliente que deseja alterar: "))
-                cliente_existente = gerenciador_cliente.exibir_um(id_cliente)
-                if not cliente_existente:
-                    print("Cliente não encontrado.")
-                    time.sleep(2)
-                    continue
-
-                print("\nDigite os novos dados (deixe em branco para manter o valor atual):")
-                nome = input(f"Novo nome ({cliente_existente.nome}): ") or cliente_existente.nome
-                telefone = input(f"Novo telefone ({cliente_existente.telefone}): ") or cliente_existente.telefone
-                email = input(f"Novo email ({cliente_existente.email}): ").lower() or cliente_existente.email
-                endereco = input(f"Novo endereço ({cliente_existente.endereco}): ") or cliente_existente.endereco
-                cidade = input(f"Nova cidade ({cliente_existente.cidade}): ").lower() or cliente_existente.cidade
-                time_futebol = input(f"Novo time ({cliente_existente.time_futebol}): ").lower() or cliente_existente.time_futebol
-                one_piece_str = input(f"Assiste One Piece? (s/n) ({'s' if cliente_existente.assiste_one_piece else 'n'}): ").lower()
-                assiste_one_piece = (True if one_piece_str == 's' else False) if one_piece_str else cliente_existente.assiste_one_piece
-                
-                cliente_atualizado = Cliente(id_cliente, nome, telefone, email, endereco, cidade, time_futebol, assiste_one_piece)
-
-                if gerenciador_cliente.alterar(id_cliente, cliente_atualizado):
-                    print("Cliente alterado com sucesso!")
-                else:
-                    print("Erro ao alterar cliente.")
-            except ValueError:
-                print("Erro: O ID do cliente deve ser um número.")
-            time.sleep(2)
-        
-        elif opcao == "5":
-            try:
-                id_cliente = int(input("Digite o ID do cliente a ser removido: "))
-                if gerenciador_cliente.remover(id_cliente):
-                    print("Cliente removido com sucesso!")
-                else:
-                    print("Nenhum cliente encontrado com esse ID, ou erro na remoção.")
-            except ValueError:
-                print("Erro: O ID do cliente deve ser um número.")
-            time.sleep(2)      
-        
-        elif opcao == "6":
-            relatorio = gerenciador_cliente.gerar_relatorio_clientes()
-            print("\n--- RELATÓRIO DE CLIENTES ---")
-            print(relatorio)    
-            input("\nPressione Enter para continuar...")     
-        
-        elif opcao == "7":
-            try:
-                id_cliente = int(input("Digite o ID do cliente a buscar: "))
-                cliente = gerenciador_cliente.exibir_um(id_cliente)
-                if cliente:
-                    print(cliente)
-                else:
-                    print("Cliente não encontrado.")
-            except ValueError:
-                print("Erro: O ID do cliente deve ser um número.")
-            time.sleep(5)
-        
-        elif opcao == "8":
             break
-  
-        else:
-            print("Opção inválida!")     
-            time.sleep(2)
 
 def menu_gerenciar_vendedores():
     gerenciador_vendedores = GerenciadorVendedores()
 
     while True:
-        limpar_terminal()
-        print("\n--- GERENCIAR VENDEDORES ---")
-        print("1. Cadastrar novo vendedor")
-        print("2. Listar todos os vendedores")
-        print("3. Voltar ao Menu de Funcionário")
+        imprimir_cabecalho("Gerenciar Vendedores")
+        menu = Table(show_header=False, box=None, padding=(0, 2))
+        menu.add_column(style="magenta", justify="right")
+        menu.add_column()
+        menu.add_row("1", "Cadastrar Novo Vendedor")
+        menu.add_row("2", "Listar Todos os Vendedores")
+        menu.add_row("3", "Voltar")
+        console.print(menu, justify="center")
 
-        opcao = input("Escolha uma opção: ").lower()
+        opcao = Prompt.ask("[bold]Escolha uma opção[/bold]", choices=["1", "2", "3"], default="3")
 
         if opcao == "1":
-            print("\n--- CADASTRO DE NOVO VENDEDOR ---")
-            nome = input("Nome do vendedor: ")
-            email = input("Email do vendedor: ").lower()
+            imprimir_cabecalho("Cadastrar Novo Vendedor")
+            nome = Prompt.ask("Nome do vendedor")
+            email = Prompt.ask("Email do vendedor").lower()
             
             novo_vendedor = Vendedor(nome=nome, email=email)
             if gerenciador_vendedores.inserir(novo_vendedor):
-                print("Vendedor cadastrado com sucesso!")
+                console.print("\n:heavy_check_mark: [bold green]Vendedor cadastrado com sucesso![/bold green]")
             else:
-                print("Erro ao cadastrar vendedor.")
-            time.sleep(3)
+                console.print("\n:x: [bold red]Erro ao cadastrar vendedor.[/bold red]")
+            time.sleep(2)
 
         elif opcao == "2":
-            print("\n--- LISTA DE VENDEDORES ---")
+            imprimir_cabecalho("Lista de Vendedores")
             vendedores = gerenciador_vendedores.listar_todos()
+            tabela = Table(title="Vendedores Cadastrados", expand=True, header_style="bold magenta")
+            tabela.add_column("ID", style="cyan")
+            tabela.add_column("Nome", style="white")
+            tabela.add_column("Email", style="green")
             if not vendedores:
-                print("Nenhum vendedor cadastrado.")
+                console.print("[yellow]Nenhum vendedor cadastrado.[/yellow]")
             else:
                 for vendedor in vendedores:
-                    print(vendedor)
-            input("\nPressione Enter para continuar...")
+                    tabela.add_row(str(vendedor.id), vendedor.nome, vendedor.email)
+                console.print(tabela)
+            aguardar_enter()
 
         elif opcao == "3":
             break
-        else:
-            print("Opção inválida!")
-            time.sleep(2)
-
-def menu_funcionarios():
-    gerenciador_produto = GerenciadorProdutos()
-    gerenciador_relatorios = GerenciadorRelatorios()
-
-    while True:
-        limpar_terminal()
-        print("\n--- MENU DE FUNCIONÁRIO ---")
-        print("1. Gerenciar Vendedores (Funcionários)")
-        print("2. Listar produtos com estoque baixo (< 5 unidades)")
-        print("3. Gerar relatório mensal de vendas por vendedor")
-        print("4. Ver relatório detalhado de todas as vendas")
-        print("5. Reabastecer estoque de produto")
-        print("6. Voltar ao menu principal")
-
-        opcao = input("Escolha uma opção: ").lower()
-
-        if opcao == "1":
-            menu_gerenciar_vendedores()
-        elif opcao == "2":
-            print("\n--- PRODUTOS COM ESTOQUE BAIXO ---")
-            produtos = gerenciador_produto.listar_produtos_com_estoque_baixo()
-            if not produtos:
-                print("Nenhum produto com estoque baixo encontrado.")
-            else:
-                for produto in produtos:
-                    print(f"ID: {produto.id}, Nome: {produto.nome}, Estoque: {produto.quantidade_estoque}")
-            input("\nPressione Enter para continuar...")
-        
-        elif opcao == "3":
-            print("\n--- GERAR RELATÓRIO DE VENDAS POR VENDEDOR ---")
-            try:
-                mes = int(input("Digite o mês (1-12): "))
-                ano = int(input("Digite o ano (ex: 2025): "))
-                if not (1 <= mes <= 12 and ano > 2000):
-                    raise ValueError("Data inválida.")
-                
-                relatorio = gerenciador_relatorios.relatorio_vendas_vendedor(mes, ano)
-                print(relatorio)
-            except ValueError as e:
-                print(f"Erro: {e}. Por favor, insira valores válidos.")
-            input("\nPressione Enter para continuar...")
-        
-        elif opcao == "4":
-            print("\n--- RELATÓRIO DETALHADO DE VENDAS ---")
-            vendas_detalhadas = gerenciador_relatorios.obter_relatorio_detalhado()
-            if not vendas_detalhadas:
-                print("Nenhuma venda encontrada.")
-            else:
-                print(f"{'ID Venda':<10} | {'Data':<20} | {'Cliente':<25} | {'Vendedor':<25} | {'Produto':<25} | {'Qtd':<5} | {'Subtotal':<10}")
-                print("-" * 130)
-                for venda in vendas_detalhadas:
-                    venda_id, data, cliente, vendedor, produto, qtd, _, subtotal = venda
-                    data_formatada = data.strftime('%d/%m/%Y %H:%M')
-                    subtotal_formatado = f"R${float(subtotal):.2f}"
-                    print(f"{str(venda_id):<10} | {data_formatada:<20} | {cliente:<25} | {vendedor:<25} | {produto:<25} | {str(qtd):<5} | {subtotal_formatado:<10}")
-            input("\nPressione Enter para continuar...")
-
-        elif opcao == "5":
-            print("\n--- REABASTECER ESTOQUE ---")
-            try:
-                produto_id = int(input("Digite o ID do produto para reabastecer: "))
-                quantidade = int(input("Digite a quantidade a ser ADICIONADA: "))
-                if gerenciador_produto.reabastecer_estoque(produto_id, quantidade):
-                    print("\nEstoque atualizado com sucesso!")
-                else:
-                    print("\nFalha ao atualizar o estoque. Verifique os dados e o log de erro.")
-            except ValueError:
-                print("\nErro: ID do produto e quantidade devem ser números inteiros.")
-            input("\nPressione Enter para continuar...")
-
-        elif opcao == "6":
-            break
-        
-        else:
-            print("Opção inválida!")
-            time.sleep(2)
-
-def menu_cliente_consulta():
-    limpar_terminal()
-    print("\n--- ÁREA DO CLIENTE ---")
-    
-    try:
-        cliente_id = int(input("Para começar, por favor, digite seu ID de Cliente: "))
-    except ValueError:
-        print("ID inválido. Por favor, digite apenas números.")
-        time.sleep(3)
-        return
-
-    gerenciador_cliente = GerenciadorClientes()
-    gerenciador_vendas = GerenciadorVendas()
-
-    cliente = gerenciador_cliente.exibir_um(cliente_id)
-    if not cliente:
-        print("Cliente não encontrado com o ID fornecido.")
-        time.sleep(3)
-        return
-
-    while True:
-        limpar_terminal()
-        print(f"\nBem-vindo(a), {cliente.nome}!")
-        print("O que você gostaria de fazer?")
-        print("1. Ver meus dados cadastrais")
-        print("2. Ver meu histórico de pedidos")
-        print("3. Voltar ao menu principal")
-
-        opcao = input("Escolha uma opção: ").lower()
-
-        if opcao == "1":
-            print("\n--- SEUS DADOS CADASTRAIS ---")
-            print(f"ID: {cliente.id}")
-            print(f"Nome: {cliente.nome}")
-            print(f"Telefone: {cliente.telefone}")
-            print(f"Email: {cliente.email}")
-            print(f"Endereço: {cliente.endereco}")
-            print(f"Cidade: {cliente.cidade}")
-            print(f"Time: {cliente.time_futebol}")
-            print(f"Assiste One Piece: {'Sim' if cliente.assiste_one_piece else 'Não'}")
-            input("\nPressione Enter para continuar...")
-        
-        elif opcao == "2":
-            print("\n--- SEU HISTÓRICO DE PEDIDOS ---")
-            pedidos = gerenciador_vendas.listar_vendas_por_cliente(cliente_id)
             
-            if not pedidos:
-                print("Você ainda não realizou nenhum pedido.")
-            else:
-                for pedido in pedidos:
-                    print(pedido)
-            input("\nPressione Enter para continuar...")
-
-        elif opcao == "3":
-            break
-        else:
-            print("Opção inválida!")
-            time.sleep(2)
+# --- MENUS DE OPERAÇÕES ---
 
 def menu_vendas():
-    limpar_terminal()
-    print("\n--- REALIZAR NOVA VENDA ---")
-
+    imprimir_cabecalho("Realizar Nova Venda")
     gerenciador_clientes = GerenciadorClientes()
     gerenciador_vendedores = GerenciadorVendedores()
     gerenciador_produtos = GerenciadorProdutos()
     gerenciador_vendas = GerenciadorVendas()
 
     try:
-        cliente_id = int(input("Digite o ID do Cliente: "))
+        cliente_id = int(Prompt.ask("Digite o ID do Cliente"))
         cliente = gerenciador_clientes.exibir_um(cliente_id)
         if not cliente:
-            print("Cliente não encontrado.")
+            console.print(":x: [bold red]Cliente não encontrado.[/bold red]")
             time.sleep(2)
             return
 
-        vendedor_id = int(input("Digite o ID do Vendedor: "))
+        vendedor_id = int(Prompt.ask("Digite o ID do Vendedor"))
         vendedores = gerenciador_vendedores.listar_todos()
         if not any(v.id == vendedor_id for v in vendedores):
-            print("Vendedor não encontrado.")
+            console.print(":x: [bold red]Vendedor não encontrado.[/bold red]")
             time.sleep(2)
             return
     except ValueError:
-        print("ID inválido. Por favor, digite um número.")
+        console.print(":x: [bold red]ID inválido. Por favor, digite um número.[/bold red]")
         time.sleep(2)
         return
     
-    print(f"\nCliente: {cliente.nome}")
-    print("-" * 30)
-
+    console.print(f"\n[green]Cliente selecionado:[/] [bold]{cliente.nome}[/bold]")
+    
     itens_carrinho = []
     while True:
-        print("\nAdicionar produto ao carrinho (digite 'fim' para encerrar)")
+        console.print("\nAdicionar produto ao carrinho (digite 'fim' para encerrar)")
+        produto_id_str = Prompt.ask("Digite o ID do produto")
+        if produto_id_str.lower() == 'fim':
+            break
+        
         try:
-            produto_id_str = input("Digite o ID do produto: ")
-            if produto_id_str.lower() == 'fim':
-                break
-            
             produto_id = int(produto_id_str)
             produto = gerenciador_produtos.exibir_um(produto_id)
             if not produto:
-                print("Produto não encontrado.")
+                console.print(":x: [yellow]Produto não encontrado.[/yellow]")
                 continue
 
-            quantidade = int(input(f"Digite a quantidade de '{produto.nome}': "))
+            quantidade = int(Prompt.ask(f"Digite a quantidade de '[bold]{produto.nome}[/bold]'"))
             if quantidade <= 0:
-                print("Quantidade deve ser positiva.")
+                console.print(":x: [yellow]Quantidade deve ser positiva.[/yellow]")
                 continue
             
             if quantidade > produto.quantidade_estoque:
-                print(f"Estoque insuficiente. Disponível: {produto.quantidade_estoque}")
+                console.print(f":x: [yellow]Estoque insuficiente. Disponível: {produto.quantidade_estoque}[/yellow]")
                 continue
 
             item = ItemVenda(produto_id=produto.id, quantidade=quantidade, preco_unitario=produto.preco)
             itens_carrinho.append(item)
-            print(f"'{produto.nome}' adicionado ao carrinho.")
+            console.print(f":heavy_check_mark: [green]'{produto.nome}' adicionado ao carrinho.[/green]")
 
         except ValueError:
-            print("Entrada inválida. Por favor, digite números para ID e quantidade.")
+            console.print(":x: [red]Entrada inválida. Por favor, digite números para ID e quantidade.[/red]")
 
     if not itens_carrinho:
-        print("Nenhum item no carrinho. Venda cancelada.")
+        console.print("\n:x: [yellow]Nenhum item no carrinho. Venda cancelada.[/yellow]")
         time.sleep(2)
         return
 
-    limpar_terminal()
-    print("\n--- RESUMO DA VENDA ---")
+    imprimir_cabecalho("Resumo da Venda")
+    tabela_resumo = Table(title="Itens no Carrinho", expand=True, header_style="bold magenta")
+    tabela_resumo.add_column("Produto")
+    tabela_resumo.add_column("Qtd", justify="right")
+    tabela_resumo.add_column("Preço Unit.", justify="right")
+    tabela_resumo.add_column("Subtotal", justify="right")
+
+    for item in itens_carrinho:
+        produto = gerenciador_produtos.exibir_um(item.produto_id)
+        tabela_resumo.add_row(produto.nome, str(item.quantidade), f"R$ {item.preco_unitario:.2f}", f"R$ {item.calcular_subtotal():.2f}")
+
+    console.print(tabela_resumo)
+
     valor_bruto = sum(item.calcular_subtotal() for item in itens_carrinho)
-    print(f"Cliente: {cliente.nome}")
-    print(f"Total de itens: {len(itens_carrinho)}")
-    print(f"Valor bruto: R$ {valor_bruto:.2f}")
-
     desconto_percentual = cliente.calcular_desconto()
-    if desconto_percentual > 0:
-        print(f"Desconto aplicável: {desconto_percentual}%")
+    valor_desconto = (valor_bruto * desconto_percentual) / 100
+    valor_final = valor_bruto - valor_desconto
 
-    print("-" * 30)
-    forma_pagamento = input("Digite a forma de pagamento (Cartao, Pix, Boleto, Dinheiro): ").upper()
+    console.print(f"\n[bold]Cliente:[/] {cliente.nome}")
+    console.print(f"[bold]Valor Bruto:[/] R$ {valor_bruto:.2f}")
+    if desconto_percentual > 0:
+        console.print(f"[bold green]Desconto Aplicado ({desconto_percentual}%):[/] R$ {valor_desconto:.2f}")
+    console.print(f"[bold cyan]Valor Final:[/] R$ {valor_final:.2f}")
     
-    confirmacao = input("Confirmar a venda? (s/n): ").lower()
-    if confirmacao == 's':
+    forma_pagamento = Prompt.ask("\nDigite a forma de pagamento", choices=["Cartao", "Pix", "Boleto", "Dinheiro", "Berries"], default="Cartao").upper()
+    
+    if Confirm.ask("\n[bold yellow]Confirmar a venda?[/bold yellow]"):
         venda = Venda(cliente_id=cliente.id, vendedor_id=vendedor_id, forma_pagamento=forma_pagamento)
-        
         sucesso, mensagem = gerenciador_vendas.realizar_venda(venda, itens_carrinho)
         
-        print(mensagem)
+        if sucesso:
+            console.print(f"\n:tada: [bold green]{mensagem}[/bold green]")
+        else:
+            console.print(f"\n:x: [bold red]{mensagem}[/bold red]")
     else:
-        print("Venda cancelada pelo usuário.")
+        console.print("\n:x: [yellow]Venda cancelada pelo usuário.[/yellow]")
         
-    input("\nPressione Enter para voltar ao menu principal...")
+    aguardar_enter()
+
+def menu_cliente_consulta():
+    imprimir_cabecalho("Área do Cliente")
+    
+    try:
+        cliente_id = int(Prompt.ask("Para começar, por favor, digite seu ID de Cliente"))
+    except ValueError:
+        console.print(":x: [red]ID inválido. Por favor, digite apenas números.[/red]")
+        time.sleep(2)
+        return
+
+    gerenciador_cliente = GerenciadorClientes()
+    cliente = gerenciador_cliente.exibir_um(cliente_id)
+    if not cliente:
+        console.print(":x: [red]Cliente não encontrado com o ID fornecido.[/red]")
+        time.sleep(2)
+        return
+
+    while True:
+        imprimir_cabecalho(f"Bem-vindo(a), {cliente.nome}!")
+        menu = Table(show_header=False, box=None, padding=(0, 2))
+        menu.add_column(style="magenta", justify="right")
+        menu.add_column()
+        menu.add_row("1", "Ver meus dados cadastrais")
+        menu.add_row("2", "Ver meu histórico de pedidos")
+        menu.add_row("3", "Voltar")
+        console.print(menu, justify="center")
+
+        opcao = Prompt.ask("[bold]Escolha uma opção[/bold]", choices=["1", "2", "3"], default="3")
+
+        if opcao == "1":
+            imprimir_cabecalho("Seus Dados Cadastrais")
+            painel_dados = (
+                f"[bold cyan]ID:[/] {cliente.id}\n"
+                f"[bold cyan]Nome:[/] {cliente.nome}\n"
+                f"[bold cyan]Telefone:[/] {cliente.telefone}\n"
+                f"[bold cyan]Email:[/] {cliente.email}\n"
+                f"[bold cyan]Endereço:[/] {cliente.endereco}\n"
+                f"[bold cyan]Cidade:[/] {cliente.cidade}\n"
+                f"[bold cyan]Time:[/] {cliente.time_futebol}\n"
+                f"[bold cyan]Assiste One Piece:[/] {'Sim' if cliente.assiste_one_piece else 'Não'}"
+            )
+            console.print(Panel(painel_dados, title="Dados Pessoais"))
+            aguardar_enter()
+        
+        elif opcao == "2":
+            imprimir_cabecalho("Seu Histórico de Pedidos")
+            gerenciador_vendas = GerenciadorVendas()
+            pedidos = gerenciador_vendas.listar_vendas_por_cliente(cliente_id)
+            
+            if not pedidos:
+                console.print("[yellow]Você ainda não realizou nenhum pedido.[/yellow]")
+            else:
+                tabela_pedidos = Table(title="Histórico de Pedidos", expand=True, header_style="bold magenta")
+                tabela_pedidos.add_column("ID Venda", style="cyan")
+                tabela_pedidos.add_column("Data", style="white")
+                tabela_pedidos.add_column("Valor Total", style="green", justify="right")
+                tabela_pedidos.add_column("Status", style="yellow")
+                
+                for pedido in pedidos:
+                    data_local = pedido.data_venda.astimezone(ZoneInfo("America/Sao_Paulo"))
+                    tabela_pedidos.add_row(str(pedido.id), data_local.strftime('%d/%m/%Y %H:%M'), f"R$ {pedido.valor_total:.2f}", pedido.status_pagamento)
+                console.print(tabela_pedidos)
+            aguardar_enter()
+
+        elif opcao == "3":
+            break
+
+def menu_funcionarios():
+    gerenciador_produto = GerenciadorProdutos()
+    gerenciador_relatorios = GerenciadorRelatorios()
+
+    while True:
+        imprimir_cabecalho("Painel do Funcionário")
+        
+        menu = Table(show_header=False, box=None, padding=(0, 2))
+        menu.add_column(style="magenta", justify="right")
+        menu.add_column()
+        menu.add_row("1", "Gerenciar Vendedores (Funcionários)")
+        menu.add_row("2", "Listar produtos com estoque baixo (< 5)")
+        menu.add_row("3", "Gerar relatório mensal de vendas por vendedor")
+        menu.add_row("4", "Ver relatório detalhado de todas as vendas (VIEW)")
+        menu.add_row("5", "Reabastecer estoque de produto (Stored Procedure)")
+        menu.add_row("6", "Voltar ao menu principal")
+        console.print(menu, justify="center")
+
+        opcao = Prompt.ask("\n[bold]Escolha uma opção[/bold]", choices=["1", "2", "3", "4", "5", "6"], default="6")
+
+        if opcao == "1":
+            menu_gerenciar_vendedores()
+
+        elif opcao == "2":
+            imprimir_cabecalho("Produtos com Estoque Baixo")
+            produtos = gerenciador_produto.listar_produtos_com_estoque_baixo()
+            
+            if not produtos:
+                console.print("[yellow]Nenhum produto com estoque baixo encontrado.[/yellow]")
+            else:
+                tabela_estoque = Table(title="Produtos com Estoque Crítico", expand=True, header_style="bold red")
+                tabela_estoque.add_column("ID", style="cyan")
+                tabela_estoque.add_column("Nome", style="white")
+                tabela_estoque.add_column("Estoque Atual", style="red", justify="right")
+                
+                for produto in produtos:
+                    tabela_estoque.add_row(str(produto.id), produto.nome, str(produto.quantidade_estoque))
+                console.print(tabela_estoque)
+            aguardar_enter()
+        
+        elif opcao == "3":
+            imprimir_cabecalho("Relatório Mensal de Vendas por Vendedor")
+            try:
+                mes = int(Prompt.ask("Digite o mês (1-12)"))
+                ano = int(Prompt.ask("Digite o ano (ex: 2025)"))
+                if not (1 <= mes <= 12 and ano > 2000):
+                    raise ValueError("Data inválida.")
+                
+                relatorio_str = gerenciador_relatorios.relatorio_vendas_vendedor(mes, ano)
+                console.print(Panel(relatorio_str, title="Resultado", border_style="green"))
+
+            except ValueError as e:
+                console.print(f":x: [bold red]Erro: {e}. Por favor, insira valores válidos.[/bold red]")
+            aguardar_enter()
+        
+        elif opcao == "4":
+            imprimir_cabecalho("Relatório Detalhado de Vendas (VIEW)")
+            vendas_detalhadas = gerenciador_relatorios.obter_relatorio_detalhado()
+            
+            if not vendas_detalhadas:
+                console.print("[yellow]Nenhuma venda encontrada para exibir no relatório.[/yellow]")
+            else:
+                tabela_vendas = Table(title="Relatório Detalhado de Itens Vendidos", expand=True, header_style="bold magenta")
+                tabela_vendas.add_column("ID Venda", style="cyan")
+                tabela_vendas.add_column("Data (Local)", style="white")
+                tabela_vendas.add_column("Cliente", style="yellow")
+                tabela_vendas.add_column("Vendedor", style="blue")
+                tabela_vendas.add_column("Produto", style="green")
+                tabela_vendas.add_column("Qtd", style="magenta", justify="right")
+                tabela_vendas.add_column("Subtotal", style="green", justify="right")
+
+                for venda in vendas_detalhadas:
+                    (venda_id, data_utc, cliente, cliente_cidade, vendedor, 
+                     produto, qtd, preco_unitario, subtotal) = venda
+                    
+                    fuso_local = ZoneInfo("America/Sao_Paulo")
+                    data_local = data_utc.astimezone(fuso_local)
+                    
+                    tabela_vendas.add_row(
+                        str(venda_id),
+                        data_local.strftime('%d/%m/%Y %H:%M'),
+                        cliente,
+                        vendedor,
+                        produto,
+                        str(qtd),
+                        f"R$ {float(subtotal):.2f}"
+                    )
+                console.print(tabela_vendas)
+            aguardar_enter()
+
+        elif opcao == "5":
+            imprimir_cabecalho("Reabastecer Estoque (Stored Procedure)")
+            try:
+                produto_id = int(Prompt.ask("Digite o ID do produto para reabastecer"))
+                quantidade = int(Prompt.ask("Digite a quantidade a ser ADICIONADA"))
+
+                if gerenciador_produto.reabastecer_estoque(produto_id, quantidade):
+                    console.print(f"\n:heavy_check_mark: [bold green]Estoque do produto ID {produto_id} atualizado com sucesso![/bold green]")
+                else:
+                    console.print("\n:x: [bold red]Falha ao atualizar o estoque. Verifique o ID do produto.[/bold red]")
+
+            except ValueError:
+                console.print("\n:x: [bold red]Erro: ID do produto e quantidade devem ser números inteiros.[/bold red]")
+            aguardar_enter()
+
+        elif opcao == "6":
+            break
+# --- FUNÇÃO PRINCIPAL ---
 
 def main():
     while True:
-        limpar_terminal()
-        print("\n=== SISTEMA PAPELARIA ===")
-        print("1. Gerenciar Produtos")
-        print("2. Gerenciar Clients")
-        print("3. Funções de Funcionário")
-        print("4. Área do Cliente")
-        print("5. Realizar Venda")
-        print("6. Sair")
+        imprimir_cabecalho("Sistema de Vendas da Papelaria", "bold green")
         
-        opcao = input("Escolha uma opcao: ").lower()
+        menu_principal = Table(show_header=False, title="Menu Principal", box=None, padding=(0, 2))
+        menu_principal.add_column(style="cyan", justify="right")
+        menu_principal.add_column(style="bold")
         
+        menu_principal.add_row("1", "Realizar Venda")
+        menu_principal.add_row("2", "Área do Cliente")
+        menu_principal.add_row("3", "Gerenciar Produtos")
+        menu_principal.add_row("4", "Gerenciar Clientes")
+        menu_principal.add_row("5", "Gerenciar Vendedores")
+        menu_principal.add_row("6", "Painel do Funcionário (Relatórios)")
+        menu_principal.add_row("7", "Sair")
+        
+        console.print(menu_principal, justify="center")
+        
+        opcao = Prompt.ask("\n[bold]Escolha uma opção[/bold]", choices=["1", "2", "3", "4", "5", "6", "7"], default="7")
+
         if opcao == "1":
-            menu_produtos()
-        elif opcao == "2":
-            menu_clientes()
-        elif opcao == "3":
-            menu_funcionarios()
-        elif opcao == "4":
-            menu_cliente_consulta()
-        elif opcao == "5":
             menu_vendas()
+        elif opcao == "2":
+            menu_cliente_consulta()
+        elif opcao == "3":
+            menu_produtos()
+        elif opcao == "4":
+            menu_clientes()
+        elif opcao == "5":
+            menu_gerenciar_vendedores()
         elif opcao == "6":
-            print("Saindo do sistema...")
-            break
-        else:
-            print("Opcao invalida!")
-            time.sleep(2)
+            menu_funcionarios()
+        elif opcao == "7":
+            if Confirm.ask("[bold yellow]Tem certeza que deseja sair?[/bold yellow]"):
+                console.print("\nAté logo!", style="bold green")
+                break
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        console.print("\n\nOperação cancelada pelo usuário. Até logo!", style="bold red")

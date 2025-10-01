@@ -428,7 +428,8 @@ class GerenciadorClientes:
             linha = cursor.fetchone()
             
             if linha:
-                return Cliente(linha[0], linha[1], linha[2], (linha[3]), linha[4])
+                # CORREÇÃO: Passando todos os 8 valores da 'linha' para o construtor
+                return Cliente(linha[0], linha[1], linha[2], linha[3], linha[4], linha[5], linha[6], linha[7])
             return None
         except Exception as e:
             print("Erro ao buscar cliente:", e)
